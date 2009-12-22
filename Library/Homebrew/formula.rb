@@ -48,16 +48,9 @@ class Formulary
   end
   
   def self.read name
-    Formulary.names.each do |f|
-      next if f != name
-
-      require Formula.path(name)
-      klass_name = Formula.class_s(name)
-      klass = eval(klass_name)
-      return klass        
-    end
-    
-    return nil
+    require Formula.path(name) rescue return nil
+    klass_name = Formula.class_s(name)
+    eval(klass_name)
   end
   
   # Loads all formula classes.
@@ -66,7 +59,6 @@ class Formulary
       require Formula.path(name)
       klass_name = Formula.class_s(name)
       klass = eval(klass_name)
-      
       yield name, klass
     end
   end
@@ -287,7 +279,7 @@ class Formula
   end
 
   def self.path name
-    HOMEBREW_PREFIX+'Library'+'Formula'+"#{name.downcase}.rb"
+    HOMEBREW_REPOSITORY+"Library/Formula/#{name.downcase}.rb"
   end
 
   def deps
