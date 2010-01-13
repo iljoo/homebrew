@@ -21,7 +21,7 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-FORMULA_META_FILES = %w[README README.md ChangeLog COPYING LICENSE COPYRIGHT AUTHORS]
+FORMULA_META_FILES = %w[README README.md ChangeLog COPYING LICENSE LICENCE COPYRIGHT AUTHORS]
 PLEASE_REPORT_BUG = "#{Tty.white}Please report this bug at #{Tty.em}http://github.com/mxcl/homebrew/issues#{Tty.reset}"
 
 def check_for_blacklisted_formula names
@@ -350,7 +350,7 @@ def macports_or_fink_installed?
 end
 
 def versions_of(keg_name)
-  `ls #{HOMEBREW_CELLAR}/#{keg_name}`.collect { |version| version.strip }.reverse
+  `/bin/ls #{HOMEBREW_CELLAR}/#{keg_name}`.collect { |version| version.strip }.reverse
 end
 
 
@@ -442,14 +442,19 @@ private
     puts "strip #{path}" if ARGV.verbose?
     path.chmod 0644 # so we can strip
     unless path.stat.nlink > 1
-      `strip #{args} #{path}`
+      system "strip", *(args+path)
     else
+      path = path.to_s.gsub ' ', '\\ '
+
       # strip unlinks the file and recreates it, thus breaking hard links!
       # is this expected behaviour? patch does it too… still, this fixes it
-      tmp=`mktemp -t #{path.basename}`.strip
-      `strip #{args} -o #{tmp} #{path}`
-      `cat #{tmp} > #{path}`
-      File.unlink tmp
+      tmp = `/usr/bin/mktemp -t homebrew_strip`.chomp
+      begin
+        `/usr/bin/strip #{args} -o #{tmp} #{path}`
+        `/bin/cat #{tmp} > #{path}`
+      ensure
+        FileUtils.rm tmp
+      end
     end
   end
 
@@ -503,4 +508,8 @@ def llvm_build
     `/Developer/usr/bin/llvm-gcc-4.2 -v 2>&1` =~ /LLVM build (\d{4,})/  
     $1.to_i
   end
+end
+
+def x11_installed?
+  Pathname.new('/usr/X11/lib/libpng.dylib').exist?
 end

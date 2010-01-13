@@ -47,8 +47,8 @@ module HomebrewEnvExtension
       prefix = `/usr/bin/xcode-select -print-path`.chomp
       prefix = "/Developer" if prefix.to_s.empty?
 
-      ENV['CC'] = "#{prefix}/usr/llvm-gcc-4.2/bin/llvm-gcc-4.2"
-      ENV['CXX'] = "#{prefix}/usr/llvm-gcc-4.2/bin/llvm-g++-4.2"
+      ENV['CC'] = "#{prefix}/usr/bin/llvm-gcc"
+      ENV['CXX'] = "#{prefix}/usr/bin/llvm-g++"
       cflags = %w{-O4} # link time optimisation baby!
     else
       ENV['CC']="gcc-4.2"
@@ -164,6 +164,8 @@ module HomebrewEnvExtension
     append_to_cflags ' -I/usr/include/libxml2'
   end
   def x11
+    opoo "You do not have X11 installed, this formula may not build." if not x11_installed?
+    
     # CPPFLAGS are the C-PreProcessor flags, *not* C++!
     append 'CPPFLAGS', '-I/usr/X11R6/include'
     append 'LDFLAGS', '-L/usr/X11R6/lib'

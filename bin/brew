@@ -65,6 +65,7 @@ Ruby: #{RUBY_VERSION}-#{RUBY_PATCHLEVEL}
 GCC-4.2: #{gcc ? "build #{gcc}" : "N/A"}
 LLVM: #{llvm ? "build #{llvm}" : "N/A" }
 MacPorts or Fink? #{macports_or_fink_installed?}
+X11 installed? #{x11_installed?}
 EOS
 end
 
@@ -330,7 +331,7 @@ rescue BuildError => e
   puts "http://github.com/mxcl/homebrew/blob/master/Library/Formula/#{formula_name}.rb#L#{$2}"
   ohai "Environment"
   dump_config
-  puts "Exit status: #{e.status.exitstatus}"
+  puts "Exit status: #{e.exit_status}"
   onoe e
   puts PLEASE_REPORT_BUG
   # this feature can be slow (depends on network conditions and if github is up)
