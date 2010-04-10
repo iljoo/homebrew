@@ -1,26 +1,3 @@
-#  Copyright 2009 Max Howell and other contributors.
-#
-#  Redistribution and use in source and binary forms, with or without
-#  modification, are permitted provided that the following conditions
-#  are met:
-#
-#  1. Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#  2. Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#
-#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 require 'download_strategy'
 require 'fileutils'
 
@@ -141,12 +118,12 @@ class Formula
 
   def bin; prefix+'bin' end
   def sbin; prefix+'sbin' end
-  def doc; prefix+'share'+'doc'+name end
+  def doc; prefix+'share/doc'+name end
   def lib; prefix+'lib' end
   def libexec; prefix+'libexec' end
-  def man; prefix+'share'+'man' end
+  def man; prefix+'share/man' end
   def man1; man+'man1' end
-  def info; prefix+'share'+'info' end
+  def info; prefix+'share/info' end
   def include; prefix+'include' end
   def share; prefix+'share' end
 
@@ -157,19 +134,26 @@ class Formula
   
   # reimplement if we don't autodetect the download strategy you require
   def download_strategy
-    case url
-    when %r[^cvs://] then CVSDownloadStrategy
-    when %r[^hg://] then MercurialDownloadStrategy
-    when %r[^svn://] then SubversionDownloadStrategy
-    when %r[^svn+http://] then SubversionDownloadStrategy
-    when %r[^git://] then GitDownloadStrategy
-    when %r[^bzr://] then BazaarDownloadStrategy
-    when %r[^https?://(.+?\.)?googlecode\.com/hg] then MercurialDownloadStrategy
-    when %r[^https?://(.+?\.)?googlecode\.com/svn] then SubversionDownloadStrategy
-    when %r[^https?://(.+?\.)?sourceforge\.net/svnroot/] then SubversionDownloadStrategy
-    when %r[^http://svn.apache.org/repos/] then SubversionDownloadStrategy
-    else CurlDownloadStrategy
+    if @specs and @url == @head
+      vcs = @specs.delete :using
+      if vcs != nil
+        # If a class is passed, assume it is a download strategy
+        return vcs if vcs.kind_of? Class
+
+        case vcs
+        when :bzr then return BazaarDownloadStrategy
+        when :curl then return CurlDownloadStrategy
+        when :cvs then return CVSDownloadStrategy
+        when :git then return GitDownloadStrategy
+        when :hg then return MercurialDownloadStrategy
+        when :svn then return SubversionDownloadStrategy
+        end
+
+        raise "Unknown strategy #{vcs} was requested."
+      end
     end
+
+    detect_download_strategy url
   end
 
   # tell the user about any caveats regarding this package, return a string
@@ -360,7 +344,8 @@ private
     type ||= :md5
     supplied=instance_variable_get("@#{type}")
     type=type.to_s.upcase
-    hash=Digest.const_get(type).hexdigest(fn.read)
+    hasher = Digest.const_get(type)
+    hash = fn.incremental_hash(hasher)
 
     if supplied and not supplied.empty?
       raise "#{type} mismatch\nExpected: #{hash}\nArchive: #{fn}" unless supplied.upcase == hash.upcase
@@ -490,7 +475,7 @@ private
 
     def depends_on name
       @deps ||= []
-      @external_deps ||= {:python => [], :ruby => [], :perl => []}
+      @external_deps ||= {:python => [], :perl => [], :ruby => [], :jruby => []}
 
       case name
       when String
@@ -498,7 +483,7 @@ private
       when Hash
         key, value = name.shift
         case value
-        when :python, :ruby, :perl
+        when :python, :perl, :ruby, :jruby
           @external_deps[value] << key
           return
         when :optional, :recommended
